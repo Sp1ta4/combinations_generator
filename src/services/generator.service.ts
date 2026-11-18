@@ -2,11 +2,28 @@ import { createHash } from 'node:crypto';
 import type { Pool, PoolConnection } from 'mysql2/promise';
 import type GeneratorRepository from '../repositories/generator.repository.js';
 import type IGenerationResult from '../entities/IGenerationResult.js';
+import type IGenerationOutcome from '../entities/IGenerationOutcome.js';
 import type CombinationItemRow from '../entities/CombinationItemRow.js';
-import { ALPHABET, BATCH_SIZE } from '../constants/constants.js';
+import { ALPHABET, BATCH_SIZE, MAX_DEADLOCK_RETRIES } from '../constants/constants.js';
 
 function isDuplicateEntryError(error: unknown): boolean {
 	return error instanceof Error && 'code' in error && error.code === 'ER_DUP_ENTRY';
+}
+
+function isDeadlockError(error: unknown): boolean {
+	return error instanceof Error && 'code' in error && error.code === 'ER_LOCK_DEADLOCK';
+}
+
+async function withDeadlockRetry<T>(operation: () => Promise<T>): Promise<T> {
+	for (let attempt = 1; ; attempt++) {
+		try {
+			return await operation();
+		} catch (error) {
+			if (!isDeadlockError(error) || attempt >= MAX_DEADLOCK_RETRIES) {
+				throw error;
+			}
+		}
+	}
 }
 
 class GeneratorService {
@@ -18,18 +35,18 @@ class GeneratorService {
 		this.pool = pool;
 	}
 
-	generate = async (items: number[], length: number): Promise<IGenerationResult> => {
+	generate = async (items: number[], length: number): Promise<IGenerationOutcome> => {
 		const hash = createHash('sha256')
 			.update(`${items.join(',')}_${length}`)
 			.digest();
 
 		const existed = await this.getExisted(hash);
 		if (existed) {
-			return existed;
+			return { result: existed, created: false };
 		}
 
 		try {
-			return await this.createNew(items, length, hash);
+			return { result: await this.createNew(items, length, hash), created: true };
 		} catch (error) {
 			if (!isDuplicateEntryError(error)) {
 				throw error;
@@ -40,7 +57,7 @@ class GeneratorService {
 				throw error;
 			}
 
-			return saved;
+			return { result: saved, created: false };
 		}
 	};
 
@@ -55,10 +72,19 @@ class GeneratorService {
 
 	private async createNew(items: number[], length: number, hash: Buffer): Promise<IGenerationResult> {
 		const combinations = this.generateCombinations(items, length);
+		const itemIds = await withDeadlockRetry(() => this.createItems(items));
+
+		return withDeadlockRetry(() => this.saveCombinations(combinations, itemIds, hash));
+	}
+
+	private async saveCombinations(
+		combinations: string[][],
+		itemIds: Map<string, number>,
+		hash: Buffer
+	): Promise<IGenerationResult> {
 		const connection = await this.pool.getConnection();
 		try {
 			await connection.beginTransaction();
-			const itemIds = await this.createItems(items, { connection });
 			const combinationId = await this.createCombination(hash, { connection });
 			await this.createCombinationItems(combinations, combinationId, itemIds, { connection });
 			await this.repository.createResult(combinationId, combinations, { connection });
@@ -96,10 +122,7 @@ class GeneratorService {
 		return result;
 	}
 
-	private async createItems(
-		items: number[],
-		{ connection }: { connection: PoolConnection }
-	): Promise<Map<string, number>> {
+	private async createItems(items: number[]): Promise<Map<string, number>> {
 		const uniqueItems: string[] = [];
 
 		items.forEach((item, index) => {
@@ -108,7 +131,7 @@ class GeneratorService {
 			}
 		});
 
-		const result = await this.repository.createItemsIfNotExist(uniqueItems, { connection });
+		const result = await this.repository.createItemsIfNotExist(uniqueItems, { connection: undefined });
 
 		const itemsMap = new Map<string, number>();
 

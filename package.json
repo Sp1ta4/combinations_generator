@@ -2,26 +2,27 @@
   "name": "skillex_task",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
   "type": "module",
   "scripts": {
     "dev": "tsx watch --env-file=.env src/main.ts",
-    "migrate": "tsx --env-file=.env src/db/migrate.ts",
     "build": "tsc",
-    "start": "node dist/main.js"
+    "start": "node dist/main.js",
+    "migrate": "tsx --env-file=.env src/db/migrate.ts",
+    "db:up": "docker compose up -d mysql",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f app"
   },
   "keywords": [],
   "author": "Glak Gevorgian",
   "license": "ISC",
   "dependencies": {
-    "cors": "^2.8.6",
     "express": "^5.3.0",
     "http-status-codes": "^2.3.0",
     "mysql2": "^3.24.6",
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.6",
     "tsx": "^4.23.15",

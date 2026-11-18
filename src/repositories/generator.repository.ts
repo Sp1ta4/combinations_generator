@@ -1,12 +1,17 @@
-import type { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import type { Pool, PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import type IGenerationResult from '../entities/IGenerationResult.js';
 import type IItem from '../entities/IItem.js';
-import { pool } from '../db/pool.js';
 import type CombinationItemRow from '../entities/CombinationItemRow.js';
 
 class GeneratorRepository {
+	private pool: Pool;
+
+	constructor(pool: Pool) {
+		this.pool = pool;
+	}
+
 	async getExistedCombination(hash: Buffer): Promise<IGenerationResult | undefined> {
-		const [res] = await pool.execute<(IGenerationResult & RowDataPacket)[]>(`
+		const [res] = await this.pool.execute<(IGenerationResult & RowDataPacket)[]>(`
 			SELECT
 				r.combination_id AS id,
 				r.response AS combination
@@ -24,7 +29,7 @@ class GeneratorRepository {
 		combination: string[][],
 		{ connection }: { connection: PoolConnection | undefined }
 	): Promise<void> {
-		const executor = connection ?? pool;
+		const executor = connection ?? this.pool;
 
 		await executor.execute(`
 			INSERT INTO responses (combination_id, response) VALUES (?, ?);
@@ -37,7 +42,7 @@ class GeneratorRepository {
 	): Promise<IItem[]> {
 		const insertPlaceholders = items.map(() => '(?)').join(', ');
 		const selectPlaceholders = items.map(() => '?').join(', ');
-		const executor = connection ?? pool;
+		const executor = connection ?? this.pool;
 
 		await executor.execute(`
 			INSERT IGNORE INTO items (item)
@@ -57,7 +62,7 @@ class GeneratorRepository {
 		hash: Buffer,
 		{ connection }: { connection: PoolConnection | undefined }
 	): Promise<number> {
-		const executor = connection ?? pool;
+		const executor = connection ?? this.pool;
 
 		const [res] = await executor.execute<ResultSetHeader>(`
 			INSERT INTO combinations (combination_hash) VALUES (?);

@@ -13,8 +13,8 @@ class GeneratorController {
 	generate = async (req: Request, res: Response): Promise<void> => {
 		const { items, length } = req.body as GenerateDto;
 
-		const result = await this.service.generate(items, length);
-		res.status(StatusCodes.CREATED).json(result);
+		const { result, created } = await this.service.generate(items, length);
+		res.status(created ? StatusCodes.CREATED : StatusCodes.OK).json(result);
 	};
 }
 

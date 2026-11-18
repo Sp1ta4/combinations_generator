@@ -23,7 +23,7 @@ export const generateSchema = z
 			.array(z.number().int().positive().max(MAX_ITEMS_PER_TYPE))
 			.min(1)
 			.max(MAX_TYPES),
-		length: z.number().int().positive(),
+		length: z.number().int().positive().max(MAX_TYPES),
 	})
 	.refine((data) => data.length <= data.items.length, {
 		message: 'length must not exceed the number of item types',

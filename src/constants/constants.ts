@@ -7,4 +7,6 @@ const ALPHABET: string[] = [
 
 const BATCH_SIZE: number = 5000;
 
-export { ALPHABET, BATCH_SIZE };
+const MAX_DEADLOCK_RETRIES: number = 3;
+
+export { ALPHABET, BATCH_SIZE, MAX_DEADLOCK_RETRIES };
