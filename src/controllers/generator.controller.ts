@@ -1,8 +1,7 @@
-import type { Request, Response, NextFunction } from 'express';
-import { StatusCodes } from 'http-status-codes'; 
-import GeneratorService from "../services/generator.service.js";
-import { length, z } from 'zod';
-import { GenerateDto } from '../dto/generate.dto.js';
+import type { Request, Response } from 'express';
+import { StatusCodes } from 'http-status-codes';
+import type GeneratorService from '../services/generator.service.js';
+import type { GenerateDto } from '../dto/generate.dto.js';
 
 class GeneratorController {
 	private service: GeneratorService;
@@ -13,9 +12,9 @@ class GeneratorController {
 
 	generate = async (req: Request, res: Response): Promise<void> => {
 		const { items, length } = req.body as GenerateDto;
-		
+
 		const result = await this.service.generate(items, length);
-		res.status(201).json("result");
+		res.status(StatusCodes.CREATED).json(result);
 	};
 }
 

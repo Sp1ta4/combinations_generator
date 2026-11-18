@@ -2,6 +2,7 @@ import express, { type Express } from 'express';
 import indexRouter from './routes/index.js';
 import { errorHandler } from './middlewares/error_handler.js';
 import cors from 'cors';
+
 const app: Express = express();
 
 app.use(cors());

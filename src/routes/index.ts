@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import generatorRouter from './generator.router.js'
+import generatorRouter from './generator.router.js';
 
 const router = Router();
 
-router.use('/generator', generatorRouter);
+router.use('/generate', generatorRouter);
 
 export default router;

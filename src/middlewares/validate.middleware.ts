@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { StatusCodes } from 'http-status-codes';
 import type { z } from 'zod';
 
 export function validateBody(schema: z.ZodType) {
@@ -6,7 +7,7 @@ export function validateBody(schema: z.ZodType) {
 		const result = schema.safeParse(req.body);
 
 		if (!result.success) {
-			res.status(400).json({
+			res.status(StatusCodes.BAD_REQUEST).json({
 				error: 'Validation failed',
 				details: result.error.issues.map((issue) => ({
 					path: issue.path.join('.'),
